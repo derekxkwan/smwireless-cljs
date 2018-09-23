@@ -11,6 +11,7 @@
                  [org.clojure/clojure "1.8.0"]
                  [org.clojure/clojurescript "1.9.293"]
                  [reagent "0.6.0"]
+                 [cljsjs/tonejs "0.8.0-1"]
                  [cljsjs/socket-io "1.6.0-0"]]
   :jvm-opts ^:replace ["-Xmx1g" "-server"]
   :plugins [[lein-doo "0.1.7"]
@@ -30,12 +31,7 @@
                   {:builds [{:id "dev"
                             :source-paths ["src-client" "env/dev"]
 
-                             :figwheel
-                             {:http-server-root "public"
-                              :nrepl-port       7001
-                              :server-port      3450
-                              :reload-clj-files {:clj false :cljc true}
-                              :nrepl-middleware [cemerick.piggieback/wrap-cljs-repl]}
+                             :figwheel true                            
 
                              :compiler     {:main          smwireless-cljs.client
                                             :output-to     "public/js/client.js"
@@ -54,6 +50,12 @@
                    
 
                    }
+    :figwheel
+     {:http-server-root "public"
+                              :nrepl-port       7001
+                              :server-port      3450
+                              :reload-clj-files {:clj false :cljc true}
+                              :nrepl-middleware [cemerick.piggieback/wrap-cljs-repl]}
 
     :dependencies [[com.cemerick/piggieback "0.2.1"]]
 

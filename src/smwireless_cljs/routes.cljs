@@ -10,7 +10,7 @@
 
 (def client-map (atom {}))
 (def client-count (atom 0))
-(def socket-io nil)
+(def socket-io (atom nil))
 
 (defn provide-client-list []
   (map name (keys @client-map)))
@@ -19,6 +19,7 @@
 (defn home [req res raise]
   (->
     [:html
+     [:link {:rel "stylesheet" :href "css/style.css"}]
      [:body
       [:div {:id "app"}]
       [:script {:src "js/client.js"}]
@@ -61,16 +62,21 @@
 
 (defn send-ws [target args]
   (if (= target "all")
-    (apply (-> socket-io .-sockets .emit) args)
+    (apply (.emit (.-sockets @socket-io)) args)
     (let [target-socket (get @client-map target)]
-      (apply (-> socket-io (.to target-socket) .emit) args)
+      (apply (-> @socket-io (.to target-socket) .emit) args)
       )))
   
 
 (defn start-ws [server]
   (let [io ((node/require "socket.io") server)]
     (socket-connect-callbacks io)
-    (set! socket-io io)
+    (println @socket-io)
+    (reset! socket-io io)
+    (println io)
+    (println @socket-io)
+    (println (.-sockets @socket-io))
+
     ))
 
 

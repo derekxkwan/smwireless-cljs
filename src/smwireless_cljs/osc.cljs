@@ -12,12 +12,18 @@
 
 (def osc-client (node-osc.Client. "127.0.0.1" out-port))
 
+(defn format-ws-args [method-name args]
+  (into [method-name] args)
+  )
+
 
 (defn send-client-list []
   (.send osc-client "/clients" (apply array (provide-client-list))))
 
-(defn display-msg [target msg]
-  (send-ws target msg))
+(defn display-msg [target msgs]
+  (let [args (format-ws-args "display" msgs)]
+    (send-ws target args)
+    ))
   
 
 (defn server-router [msg rinfo]
@@ -25,7 +31,7 @@
         args (vec (rest msg))]
     (cond
       (= address "/clients") (send-client-list)
-      (= address "/display") (apply display-msg (subvec args 0 2))
+      (= address "/display") (display-msg "all" args)
       :else nil
       )))
 
