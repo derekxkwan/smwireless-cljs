@@ -12,7 +12,7 @@
 (def progress-text (r/atom "socketMusic: wireless"))
 
 (defn render-progress []
-  [:span {:align "center" :id "progress-text"}
+  [:span {:style {:text-align "center"} :id "progress-text"}
    @progress-text
    ])
    
@@ -22,7 +22,7 @@
    {:on-click
     #(let [already-loaded? (not (= @status-text "press to load"))
            ctx-success? (au/init-audio win)]
-       (when (and (not (nil? ctx-success?)) (not (already-loaded?)))
+       (when (and (not (nil? ctx-success?)) (not already-loaded?))
          (reset! status-text "loaded")))
     }
     @status-text ])
@@ -43,7 +43,7 @@
   (r/render-component [#'home-page] (.getElementById js/document "app")))
 
 (defn init []
-  (.on @socket "display" #(swap! progress-text conj (js->clj % :keywordize-keys true)))
+  (.on @socket "display" #(reset! progress-text %))
   ;;(.on @socket "messages" #(reset! messages (js->clj % :keywordize-keys true)))
   (.on @socket "noisePatterns"
        (fn [delay?]

@@ -21,9 +21,8 @@
   (.send osc-client "/clients" (apply array (provide-client-list))))
 
 (defn display-msg [target msgs]
-  (let [args (format-ws-args "display" msgs)]
-    (send-ws target args)
-    ))
+    (send-ws target "display" msgs)
+    )
   
 
 (defn server-router [msg rinfo]
@@ -32,6 +31,7 @@
     (cond
       (= address "/clients") (send-client-list)
       (= address "/display") (display-msg "all" args)
+      (= address "/display_targeted") (display-msg (first args) (vec (rest args)))
       :else nil
       )))
 

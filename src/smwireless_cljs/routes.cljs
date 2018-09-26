@@ -10,7 +10,7 @@
 
 (def client-map (atom {}))
 (def client-count (atom 0))
-(def socket-io (atom nil))
+(def sio nil)
 
 (defn provide-client-list []
   (map name (keys @client-map)))
@@ -60,23 +60,47 @@
            ))
   )
 
-(defn send-ws [target args]
-  (if (= target "all")
-    (apply (.emit (.-sockets @socket-io)) args)
-    (let [target-socket (get @client-map target)]
-      (apply (-> @socket-io (.to target-socket) .emit) args)
-      )))
-  
+(defn broadcast-one [address arg1]
+  (.emit sio address arg1))
+
+(defn broadcast-two [address arg1 arg2]
+  (.emit sio address arg1 arg2))
+
+(defn broadcast-three [address arg1 arg2 arg3]
+  (.emit sio address arg1 arg2 arg3))
+
+(defn target-one [target address arg1]
+  (.emit (.to sio target) address arg1))
+
+(defn target-two [target address arg1 arg2]
+  (.emit (.to sio target) address arg1 arg2))
+
+(defn target-three [target address arg1 arg2 arg3]
+  (.emit (.tio sio target) address arg1 arg2 arg3))
+
+(defn send-ws [target address args]
+  (let [numargs (count args)
+        newargs (into [address] args)]
+    (if (= target "all")
+      (cond
+        (= numargs 1) (apply broadcast-one newargs)
+        (= numargs 2) (apply broadcast-two newargs)
+        (= numargs 3) (apply broadcast-three newargs)
+        :else nil)
+      (let [newargs2 (into [target] newargs)]
+        (cond
+          (= numargs 1) (apply target-one newargs2)
+          (= numargs 2) (apply target-two newargs2)
+          (= numargs 3) (apply target-three newargs2)
+          :else nil))
+      )
+  ))
 
 (defn start-ws [server]
   (let [io ((node/require "socket.io") server)]
     (socket-connect-callbacks io)
-    (println @socket-io)
-    (reset! socket-io io)
-    (println io)
-    (println @socket-io)
-    (println (.-sockets @socket-io))
 
+   (set! sio io)
     ))
 
 

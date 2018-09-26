@@ -29,7 +29,7 @@
   {:client
    {:cljsbuild
                   {:builds [{:id "dev"
-                            :source-paths ["src-client" "env/dev"]
+                            :source-paths ["src-client"]
 
                              :figwheel true                            
 
