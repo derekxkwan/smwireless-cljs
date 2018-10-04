@@ -13,19 +13,12 @@
 (def status-text (r/atom "press to load"))
 (def progress-text (r/atom "socketMusic: wireless"))
 (def info-text (r/atom "make sure phone is unmuted and volume is up"))
-(def bg-colors {:default "#000000" :filt-noise "#dbcc00"})
-(def event-texts {:default "" :filt-noise "filt-noise"})
+(def bg-colors {:default "#000000" :filt-noise "#dbcc00" :telegraph "#5dafba"})
+(def event-texts {:default "" :filt-noise "filt-noise" :telegraph "telegraph"})
 (def bg-flash-dur 0.25)
 (def info-flash-dur 1)
 (def bg-callback nil)
 (def info-callback nil)
-
-(defn unload-callback [evt]
-  (when (false? wakelock-enabled)
-         (.disble nosleep)
-         (set! wakelock-enabled false))
-  (au/cleanup)
-  )
 
 
 (defn set-background-color [evt]
@@ -45,11 +38,31 @@
   (set! info-callback (js/setTimeout #(reset! info-text (get event-texts :default)) (* 1000 info-flash-dur)))
   )
 
-(defn event-vis [evt]
+(defn flash-event-vis [evt]
   (event-background-color evt)
   (event-info-text evt)
   )
 
+(defn set-event-vis [evt]
+  (set-background-color evt)
+  (reset! info-text (get event-texts evt))
+  )
+
+;; end piece/ cleanup
+
+(defn end-piece []
+  (set-event-vis :default)
+  (when (false? wakelock-enabled)
+         (.disble nosleep)
+         (set! wakelock-enabled false))
+  (au/cleanup)
+  )
+
+(defn unload-callback [evt]
+  (end-piece)
+  )
+
+;; rendering stuff
 (defn render-progress []
   [:span {:style {:text-align "center"} :id "progress-text"}
    @progress-text
@@ -103,10 +116,10 @@
          (if (= delay-flag 1)
            (let [delay-time (rand 3)]
              (au/play-noise-pattern delay-time)
-             (js/setTimeout #(event-vis :filt-noise) (* 1000 delay-time))
+             (js/setTimeout #(flash-event-vis :filt-noise) (* 1000 delay-time))
              (println "noise_patterns delayed"))
            (do (au/play-noise-pattern 0)
-               (event-vis :filt-noise)
+               (flash-event-vis :filt-noise)
                (println "noise_patterns not_delayed"))
            ))
        )
