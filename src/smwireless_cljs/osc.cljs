@@ -32,6 +32,9 @@
 (defn telegraph [play-flag]
   (send-ws "all" "telegraph" [play-flag]))
 
+(defn modem-play [target play-flag]
+  (send-ws target "modem" [play-flag]))
+
 (defn server-router [msg rinfo]
   (let [address (first msg)
         args (vec (rest msg))]
@@ -41,7 +44,8 @@
       (= address "/display_targeted") (display-msg (first args) (vec (rest args)))
       (= address "/start_end") (start-end (first args))
       (= address "/noise_patterns") (noise-patterns (first args) (second args))
-      (= address "/telegraph") (telegraph play-flag)
+      (= address "/telegraph") (telegraph (first args))
+      (= address "/modem") (modem-play (first args) (second args)) ;;clicks and whine
       :else nil
       )))
 
