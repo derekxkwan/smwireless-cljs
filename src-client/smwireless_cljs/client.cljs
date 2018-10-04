@@ -45,6 +45,11 @@
   (set! info-callback (js/setTimeout #(reset! info-text (get event-texts :default)) (* 1000 info-flash-dur)))
   )
 
+(defn event-vis [evt]
+  (event-background-color evt)
+  (event-info-text evt)
+  )
+
 (defn render-progress []
   [:span {:style {:text-align "center"} :id "progress-text"}
    @progress-text
@@ -98,13 +103,10 @@
          (if (= delay-flag 1)
            (let [delay-time (rand 3)]
              (au/play-noise-pattern delay-time)
-             (js/setTimeout #((event-background-color :filt-noise)
-                              (event-info-text :filt-noise))
-                            (* 1000 delay-time))
+             (js/setTimeout #(event-vis :filt-noise) (* 1000 delay-time))
              (println "noise_patterns delayed"))
            (do (au/play-noise-pattern 0)
-               (event-background-color :filt-noise)
-               (event-info-text :filt-noise)
+               (event-vis :filt-noise)
                (println "noise_patterns not_delayed"))
            ))
        )
