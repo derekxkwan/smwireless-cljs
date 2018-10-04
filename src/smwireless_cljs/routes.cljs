@@ -22,6 +22,8 @@
      [:link {:rel "stylesheet" :href "css/style.css"}]
      [:body
       [:div {:id "app"}]
+      [:script {:src "js/Tone.min.js"}]
+      [:script {:src "js/NoSleep.min.js"}]
       [:script {:src "js/client.js"}]
        ]]
     (html)

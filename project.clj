@@ -11,7 +11,6 @@
                  [org.clojure/clojure "1.8.0"]
                  [org.clojure/clojurescript "1.9.293"]
                  [reagent "0.6.0"]
-                 [cljsjs/tonejs "0.8.0-1"]
                  [cljsjs/socket-io "1.6.0-0"]]
   :jvm-opts ^:replace ["-Xmx1g" "-server"]
   :plugins [[lein-doo "0.1.7"]
@@ -112,7 +111,8 @@
    "build"   ["do"
               ["clean"]
               ["npm" "install"]
-              ["figwheel" "dev"]]
+              ["figwheel" "dev"]
+              ]
    "package" ["do"
               ["clean"]
               ["npm" "install"]

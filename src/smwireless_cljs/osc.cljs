@@ -21,9 +21,13 @@
   (.send osc-client "/clients" (apply array (provide-client-list))))
 
 (defn display-msg [target msgs]
-    (send-ws target "display" msgs)
-    )
-  
+    (send-ws target "display" msgs))
+
+(defn start-end [start-flag]
+  (send-ws "all" "start_end" [start-flag]))
+
+(defn noise-patterns [target delay-flag]
+  (send-ws target "noise_patterns" [delay-flag]))
 
 (defn server-router [msg rinfo]
   (let [address (first msg)
@@ -32,6 +36,8 @@
       (= address "/clients") (send-client-list)
       (= address "/display") (display-msg "all" args)
       (= address "/display_targeted") (display-msg (first args) (vec (rest args)))
+      (= address "/start_end") (start-end (first args))
+      (= address "/noise_patterns") (noise-patterns (first args) (second args))
       :else nil
       )))
 
