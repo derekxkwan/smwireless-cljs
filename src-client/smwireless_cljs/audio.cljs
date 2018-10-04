@@ -9,8 +9,9 @@
 (def main-out nil)
 (def max-db 0)
 (def loops [])
-(def filt-noise-node {:src nil :filter nil :env nil :gain nil})
+(def noise-node {:src nil :filter nil :env nil :gain nil})
 (def telegraph-node {:src nil :env nil :gain nil :part nil})
+(def modem-parts {:clicks nil})
 (def transport? false)
 
 (defn start-transport [start? delay-time]
@@ -119,8 +120,10 @@
         part-params (js-obj "callback" cur-callback "loop" true "loopEnd" total-len "events" evts)
         cur-part (new Tone.Part. part-params)
         ]
-    (.start cur-part)
-    (set! telegraph-node (assoc telegraph-node :part cur-part))
+    (when (nil? (get telegraph-node :part))
+      (.start cur-part)
+      (set! telegraph-node (assoc telegraph-node :part cur-part))
+      )
   )
  )
 
@@ -133,28 +136,62 @@
     )
   )
 
-;; filtered noise stuff
+;; noise stuff
 
-(defn filt-noise-init []
+
+(defn noise-init []
   (let [noise-param (js-obj "playbackRate" 1 "volume" -6 "type" "brown")
         filt-param (js-obj "frequency" 200 "type" "bandpass" "gain" 0 "Q" 5)
         cur-src (new Tone.Noise. noise-param)
         cur-filt (new Tone.Filter. filt-param)
-        cur-env (new Tone.AmplitudeEnvelope. 0.01 0.0 1.0 0.01)
+        cur-env (new Tone.AmplitudeEnvelope. 0.01 0.0 1.0 0.001)
         cur-gain (new Tone.Gain. 1)]
     (.start cur-src)
     (.sync cur-src)
     (.chain cur-src cur-filt cur-env cur-gain main-out)
-    (set! filt-noise-node
+    (set! noise-node
           {:src cur-src
            :filter cur-filt
            :env cur-env
            :gain cur-gain}
           )
-    (.log js/console "filt-noise-init")
+    (.log js/console "noise-init")
     )
   )
 
+
+;; modem clicks stuff
+
+(defn modem-clicks-play [freq subdiv]
+  (let [cur-filt (get noise-node :filter)]
+    (set! (-> cur-filt .-Q .-value) 10)
+    (set! (-> cur-filt .-frequency .-value) freq)
+    )
+  (let [cur-env (get noise-node :env)
+        loop-dur (/ 4.0 subdiv)
+        cur-callback (fn [time]
+                       (.triggerAttackRelease cur-env modem-click-dur time 1))
+        loop-params (js-obj "callback" cur-callback "interval" loop-dur)
+        cur-loop (new Tone.Loop. loop-params)]
+    (when (not (nil? (get modem-parts :clicks)))
+      (.start cur-loop)
+      (set! modem-parts (assoc modem-parts :clicks cur-loop))
+      )
+    )
+        
+  )
+
+(defn modem-clicks-stop []
+  (let [clicks-part (get modem-parts :clicks)]
+    (when (not (nil? clicks-part))
+      (.stop clicks-part)
+      (set! modem-parts (assoc modem-parts :clicks nil))
+
+      )
+    )
+  )
+
+;; filtered noise stuff
 
 (defn filt-noise-gen-rand-seq [len freq-bds q-bds time-bds]
   (let [freq-lo (get freq-bds :lo)
@@ -177,8 +214,8 @@
   (let [delay-str (str "+" delay-sec)
         gen-seq (filt-noise-gen-rand-seq
                  len freq-bds q-bds time-bds)
-        noise-filt (get filt-noise-node :filter) 
-        noise-env (get filt-noise-node :env)
+        noise-filt (get noise-node :filter) 
+        noise-env (get noise-node :env)
         cur-callback (fn [time val]
                        (let [cur-vel 1]
                          (.setValueAtTime (.-Q noise-filt) (.-q val) time)
@@ -211,11 +248,16 @@
 (defn get-current-time []
   (.-currentTime ctx))
 
+
+(defn stop-loops []
+  (telegraph-stop)
+  (modem-clicks-stop)
+  )
+
 (defn cleanup []
     ;; clear all callbacks, set main gain to 0
   (mute-main-out true)
   (start-transport false 0.1)
-  (telegraph-stop)
   ) 
 
 
@@ -227,7 +269,7 @@
     (set! ctx true)
     (master-init)
     (start-transport true 0.1)
-    (filt-noise-init)
+    (noise-init)
     (telegraph-init (+ 100 (rand 1000)) 1)
     ;;(doall (map osc-create (keys oscs)))
     ;;(osc-connect :carrier true nil nil)
