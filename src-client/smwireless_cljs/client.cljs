@@ -123,6 +123,18 @@
                (println "noise_patterns not_delayed"))
            ))
        )
+
+  (.on @socket "telegraph"
+       (fn [play-flag]
+         (if (= play-flag 1)
+           (do (au/telegraph-play-rand-seq (+ 20 (rand-int 20)) (+ 0.15 (rand 0.45)))
+               (set-event-vis :telegraph))
+           (do (au/telegraph-stop)
+               (set-event-vis :default))
+         )
+       )
+       )
+  
   (.on @socket "start_end"
        (fn [start-flag]
          (if (= start-flag 1)
