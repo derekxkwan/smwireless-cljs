@@ -35,6 +35,24 @@
 (defn modem-play [target play-flag]
   (send-ws target "modem" [play-flag]))
 
+(defn modem-drone-play [target play-flag]
+  (send-ws target "modem_drone" [play-flag]))
+
+(defn modem-clicks-play [target play-flag]
+  (send-ws target "modem_clicks" [play-flag]))
+
+(defn radio-player-play [target bufnum delay?]
+  (send-ws target "radio_player" [bufnum delay?])
+  )
+
+(defn main-gain-set [target gain]
+  (send-ws target "main_gain" [gain])
+  )
+
+(defn main-mute [target mute-flag]
+  (send-ws target "main_mute" [mute-flag])
+  )
+
 (defn server-router [msg rinfo]
   (let [address (first msg)
         args (vec (rest msg))]
@@ -45,7 +63,14 @@
       (= address "/start_end") (start-end (first args))
       (= address "/noise_patterns") (noise-patterns (first args) (second args))
       (= address "/telegraph") (telegraph (first args))
-      (= address "/modem") (modem-play (first args) (second args)) ;;clicks and whine
+      (= address "/modem") (modem-play (first args) (second args))
+      (= address "/modem_drone") (modem-drone-play (first args) (second args))
+      (= address "/modem_clicks") (modem-clicks-play (first args) (second args))
+      (= address "/radio_player") (radio-player-play (first args) (second args)
+                                                     (get args 2))
+      (= address "/main_gain") (main-gain-set (first args) (second args))
+      (= address "/main_mute") (main-mute (first args) (second args))
+
       :else nil
       )))
 

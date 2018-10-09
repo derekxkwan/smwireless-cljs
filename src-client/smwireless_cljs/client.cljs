@@ -10,16 +10,31 @@
 (defonce wakelock-enabled false)
 
 (def win js/window)
+(def cur-timeouts (atom []))
 (def status-text (r/atom "press to load"))
 (def progress-text (r/atom "socketMusic: wireless"))
 (def info-text (r/atom "make sure phone is unmuted and volume is up"))
-(def bg-colors {:default "#000000" :filt-noise "#dbcc00" :telegraph "#5dafba"})
-(def event-texts {:default "" :filt-noise "filt-noise" :telegraph "telegraph"})
+(def bg-colors {:default "#000000" :filt-noise "#dbcc00" :telegraph "#5dafba"
+                :modem-drone "#ff0055" :modem-clicks "#8f002f" :radio-player "#31c926"})
+(def event-texts {:default "" :filt-noise "filt-noise" :telegraph "telegraph"
+                  :modem-drone "modem-drone" :modem-clicks "modem-clicks" :radio-player "radio"})
 (def bg-flash-dur 0.25)
 (def info-flash-dur 1)
 (def bg-callback nil)
 (def info-callback nil)
+(def gain-val (r/atom 1))
 
+
+(defn clear-timeouts []
+  (doall (map #(js/clearTimeout %) @cur-timeouts))
+  (reset! cur-timeouts [])
+  )
+
+(defn sched-timeout [timeout-func delay-time]
+  (clear-timeouts)
+  (let [new-timeout (js/setTimeout timeout-func (* 1000 delay-time))]
+    (swap! cur-timeouts conj new-timeout)
+    ))
 
 (defn set-background-color [evt]
   (let [cur-color (get bg-colors evt)]
@@ -62,7 +77,16 @@
   (end-piece)
   )
 
+
 ;; rendering stuff
+(defn render-gain-slider []
+  [:input {:type "range" :min 0 :max 1 :default-value @gain-val
+           :class "gain-slider"
+           :on-change #(let [tval (-> % .-target .-value)]
+                         (au/set-master-gain-volume tval))
+           :step 0.001}]
+  )
+
 (defn render-progress []
   [:span {:style {:text-align "center"} :id "progress-text"}
    @progress-text
@@ -98,6 +122,10 @@
    [:div
     (render-button)
     ]
+   [:div {:class "gui"}
+    "(gain)" [:br]
+    (render-gain-slider)
+    ]
    [:div {:class "textbox"}
     (render-info)
     ]
@@ -116,7 +144,7 @@
          (if (= delay-flag 1)
            (let [delay-time (rand 3)]
              (au/play-noise-pattern delay-time)
-             (js/setTimeout #(flash-event-vis :filt-noise) (* 1000 delay-time))
+             (sched-timeout #(flash-event-vis :filt-noise) delay-time)
              (println "noise_patterns delayed"))
            (do (au/play-noise-pattern 0)
                (flash-event-vis :filt-noise)
@@ -127,12 +155,34 @@
   (.on @socket "telegraph"
        (fn [play-flag]
          (if (= play-flag 1)
-           (do (au/telegraph-play-rand-seq (+ 20 (rand-int 20)) (+ 0.15 (rand 0.45)))
+           (do (au/telegraph-play-rand-seq (+ 350 (rand-int 50)) (+ 0.06 (rand 0.09)))
                (set-event-vis :telegraph))
            (do (au/telegraph-stop)
                (set-event-vis :default))
          )
        )
+       )
+
+  (.on @socket "modem_drone"
+       (fn [play-flag]
+         (if (= play-flag 1)
+           (do (set-event-vis :modem-drone)
+               (au/modem-whine-play true))
+           (do (set-event-vis :default)
+               (au/modem-whine-play false))
+           )
+         )
+       )
+
+    (.on @socket "modem_clicks"
+       (fn [play-flag]
+         (if (= play-flag 1)
+           (do (set-event-vis :modem-clicks)
+               (au/modem-clicks-play true))
+           (do (set-event-vis :default)
+               (au/modem-clicks-play false))
+           )
+         )
        )
   
   (.on @socket "start_end"
@@ -145,7 +195,31 @@
                (reset! progress-text "end"))
            ))
        )
-         
+
+  (.on @socket "radio_player"
+       (fn [bufnum delay-flag]
+         (let [seqlen (+ 5 (rand-int 7))
+               delay-sec (if (= delay-flag 1)
+                           (+ 0.25 (rand 1.75))
+                           0)
+               ]
+           (au/player-play-rand-seq delay-sec seqlen bufnum)
+           (if (> delay-sec 0)
+             (sched-timeout #(flash-event-vis :radio-player) delay-sec)
+             (flash-event-vis :radio-player))
+           )
+         )
+       )
+  
+  (.on @socket "main_gain"
+       (fn [gain]
+         (au/set-main-volume gain)))
+
+  (.on @socket "main_mute"
+       (fn [mute-flag]
+         (au/mute-main-out (= 1 mute-flag))
+         )
+       )
  )
 
 (defn init []
