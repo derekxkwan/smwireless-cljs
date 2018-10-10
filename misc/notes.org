@@ -1,0 +1,5 @@
+* CONNECTION NOTES
+- must bind not to loopback IP (127.0.0.1) but "all IP addresses" (0.0.0.0)
+- must allow access to port via firewall
+    - sudo ipfw add <port> on mac
+    - sudo ufw enable <port> on linux

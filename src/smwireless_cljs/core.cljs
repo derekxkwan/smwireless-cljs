@@ -11,8 +11,8 @@
 
 (defn app []
   (mount/start)
-  (let [host "127.0.0.1"
-        port 3000]
+  (let [host "0.0.0.0"
+        port 8080]
     (->
       (http/start
         {:handler    (wrap-defaults router)
