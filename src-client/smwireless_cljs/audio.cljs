@@ -10,27 +10,15 @@
 (def master-gain nil)
 (def max-db 0)
 (def loops [])
-(def noise-node {:src nil :filter nil :env nil :gain nil})
-(def telegraph-node {:src nil :env nil :gain nil :part nil})
-(def modem-whine-node {:src nil :filters [] :scalers [] :env nil :gain nil :is-playing false})
+(def noise-node {:src nil :filter nil :env nil :gain nil :started false})
+(def telegraph-node {:src nil :env nil :gain nil :part nil :started false})
+(def modem-whine-node {:src nil :filters [] :scalers [] :env nil :gain nil :is-playing false :started false})
 (def player-nodes {:srcs [] :gain nil})
-(def sound-paths ["res/es-rad.wav", "res/mul-rad-noise.wav", "res/sing-rad1.wav"])
+(def sound-paths ["res/es-rad.wav", "res/mul-rad-noise.wav", "res/sing-rad1.wav" "res/sing-rad2.wav"])
 (def modem-parts {:clicks nil})
 (def modem-click-param {:dur 0.025 :freq (+ 500 (rand 500)) :subdiv (+ 2 (rand-int 7))})
 (def transport? false)
 
-(defn start-transport [start? delay-time]
-  (.cancel (.-Transport Tone))
-  (let [delay-str (str "+" delay-time)]
-     (cond
-      (and (true? start?) (false? transport?)) (do (.start (.-Transport Tone) delay-str)
-                                                   (set! transport? true))
-      (and (not (true? start?)) (true? transport?)) (do (.stop (.-Transport Tone) delay-str)
-                                                        (set! transport? false))
-      :else nil
-      )
-    )
-  )
 
 
 (defn set-adsr [cur-env attack decay sustain release]
@@ -40,16 +28,23 @@
   (set! (.-release cur-env) release))
 
 (defn set-main-volume [volume]
-  (when ((comp not nil?) main-out)
-    (.rampTo (.-volume main-out) volume 0.01)
+  (let [myvol (js/parseFloat volume)]
+    ;(.log js/console "main-vol" myvol)
+    (when ((comp not nil?) main-out)
+      (.rampTo (.-volume main-out) myvol 0.01)
+      )
     )
     
   )
 
 (defn set-master-gain-volume [volume]
+  (let [myvol (js/parseFloat volume)]
+  
+     ;(.log js/console "master-gain" myvol)
   (when ((comp not nil?) master-gain)
-    (.linearRampToValueAtTime (.-gain master-gain) volume 2)
+    (.linearRampToValueAtTime (.-gain master-gain) myvol 2)
     ))
+  )
 
 (defn mute-main-out [mute?]
   (if (true? mute?)
@@ -92,6 +87,17 @@
   )
 
 ;; sound player stuff
+
+;;(defn players-start [start?]
+  ;;(let [started? (get player-nodes :started)
+    ;;    players (get player-nodes :srcs)]
+    ;;(cond
+      ;;(and (false? started?) (true? start?)) (do (doall (map #(do (.start %) (.sync %)) players)) (set! player-nodes (assoc player-nodes :started true)))
+      ;;(and (true? started?) (false? start?)) (do (doall (map #(.stop %) players)) (set! player-nodes (assoc player-nodes :started false)))
+      ;;:else nil)
+   ;; )
+  ;;)
+
 (defn players-init []
   (let [cur-srcs (mapv #(new Tone.Player. % ) sound-paths)
         cur-gain (new Tone.Gain. 1)]
@@ -155,18 +161,27 @@
 
 ;; telegraph stuff
 
+(defn telegraph-start [start?]
+  (let [started? (get telegraph-node :started)
+        cur-src (get telegraph-node :src)]
+    (cond
+      (and (false? started?) (true? start?)) (do (.start cur-src) (.sync cur-src) (set! telegraph-node (assoc telegraph-node :started true)))
+      (and (true? started?) (false? start?)) (do (.stop cur-src) (set! telegraph-node (assoc telegraph-node :started false)))
+      :else nil
+      )))
+  
+
 (defn telegraph-init [freq vol]
   (let [osc-param (js-obj "type" "sine" "frequency" freq "detune" 0)
         cur-src (new Tone.Oscillator. osc-param)
         cur-env (new Tone.AmplitudeEnvelope. 0.001 0.0 1 0.001)
         cur-gain (new Tone.Gain. vol)]
-    (.start cur-src)
-    (.sync cur-src)
     (.chain cur-src cur-env cur-gain master-gain)
     (set! telegraph-node
           {:src cur-src
            :env cur-env
-           :gain cur-gain})
+           :gain cur-gain
+           :started false})
     (.log js/console "telegraph init")
     )
   )
@@ -222,7 +237,18 @@
 
 ;; noise stuff
 
-
+(defn noise-start [start?]
+  (let [started? (get noise-node :started)
+        cur-src (get noise-node :src)]
+    (cond
+      (and (false? started?) (true? start?)) (do (.start cur-src) (.sync cur-src) (set! noise-node (assoc noise-node :started true)))
+      (and (true? started?) (false? start?)) (do (.stop cur-src) (set! noise-node (assoc noise-node :started false)))
+      :else nil
+      )
+    )
+  )
+  
+  
 (defn noise-init []
   (let [noise-param (js-obj "playbackRate" 1 "volume" 0 "type" "brown")
         filt-param (js-obj "frequency" 200 "type" "bandpass" "gain" 0 "Q" 5)
@@ -230,20 +256,28 @@
         cur-filt (new Tone.Filter. filt-param)
         cur-env (new Tone.AmplitudeEnvelope. 0.01 0.0 1.0 0.001)
         cur-gain (new Tone.Gain. 1.5)]
-    (.start cur-src)
-    (.sync cur-src)
     (.chain cur-src cur-filt cur-env cur-gain master-gain)
     (set! noise-node
           {:src cur-src
            :filter cur-filt
            :env cur-env
-           :gain cur-gain}
+           :gain cur-gain
+           :started false}
           )
     (.log js/console "noise-init")
     )
   )
 
 ;; modem whine stuff
+
+(defn modem-whine-start [start?]
+  (let [started? (get modem-whine-node :started)
+        cur-src (get modem-whine-node :src)]
+    (cond
+      (and (false? started?) (true? start?)) (do (.start cur-src) (.sync cur-src) (set! modem-whine-node (assoc modem-whine-node :started true)))
+      (and (true? started?) (false? start?)) (do (.stop cur-src) (set! modem-whine-node (assoc modem-whine-node :started false)))
+      :else nil
+      )))
 
 (defn modem-whine-init [freq]
   (let [freqs (mapv #(* % freq) [1 1.976 3.05])
@@ -255,8 +289,6 @@
         scalers (mapv #(new Tone.Gain. %)  vols)
         cur-env (new Tone.AmplitudeEnvelope. 0.1 0.0 1.0 0.01)
         cur-gain (new Tone.Gain. 1)]
-    (.start cur-src)
-    (.sync cur-src)
     (doall (map #(do (.connect cur-src %1)
                   (.connect %1 %2)
                   (.connect %2 cur-env))
@@ -268,7 +300,8 @@
            :scalers scalers
            :env cur-env
            :gain cur-gain
-           :is-playing false})
+           :is-playing false
+           :started false})
     )
   )
 
@@ -408,17 +441,40 @@
   (modem-whine-play false)
   )
 
-(defn cleanup []
-    ;; clear all callbacks, set main gain to 0
-  (mute-main-out true)
-  (start-transport false 0.1)
-  ) 
-
 (defn synths-init []
   (noise-init)
   (telegraph-init (+ 1000 (rand 5000)) 0.5)
   (modem-whine-init (+ 2050 (rand 2000)))
   (players-init)
+  )
+
+(defn start-sources [start?]
+  (modem-whine-start start?)
+  (telegraph-start start?)
+  (noise-start start?)
+  )
+
+(defn start-transport [start? delay-time]
+  (.cancel (.-Transport Tone))
+  (let [delay-str (str "+" delay-time)]
+     (cond
+      (and (true? start?) (false? transport?)) (do (.start (.-Transport Tone) delay-str)
+                                                   (.log js/console "start transport")
+                                                   (start-sources true)
+                                                   (set! transport? true))
+      (and (not (true? start?)) (true? transport?)) (do (.stop (.-Transport Tone) delay-str)
+                                                        (.log js/console "stop transport")
+                                                        (start-sources false)
+                                                        (set! transport? false))
+      :else nil
+      )
+    )
+  )
+
+(defn cleanup []
+    ;; clear all callbacks, set main gain to 0
+  (mute-main-out true)
+  (start-transport false 0.001)
   )
 
 (defn init-audio [win]
@@ -429,7 +485,6 @@
     (set! ctx true)
     (master-init)
     (master-gain-init)
-    (start-transport true 0.1)
     (synths-init)
     ;;(doall (map osc-create (keys oscs)))
     ;;(osc-connect :carrier true nil nil)

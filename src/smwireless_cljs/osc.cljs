@@ -23,6 +23,18 @@
 (defn display-msg [target msgs]
     (send-ws target "display" msgs))
 
+(defn sec-display-msg [target sec-num]
+  (let [sec-str (cond
+                  (= sec-num 1) "section one"
+                  (= sec-num 2) "section two"
+                  (= sec-num 3) "section three"
+                  :else "socketMusic: wireless")]
+
+
+    (send-ws target "display" [sec-str])
+    )
+  )
+
 (defn start-end [start-flag]
   (send-ws "all" "start_end" [start-flag]))
 
@@ -59,6 +71,7 @@
     (cond
       (= address "/clients") (send-client-list)
       (= address "/display") (display-msg "all" args)
+      (= address "/sec_display") (sec-display-msg "all" (first args))
       (= address "/display_targeted") (display-msg (first args) (vec (rest args)))
       (= address "/start_end") (start-end (first args))
       (= address "/noise_patterns") (noise-patterns (first args) (second args))
